@@ -1,0 +1,21 @@
+{
+  "short_name": "ABS Qecode",
+  "name": "ABS QecodeReader",
+  "description": "ABS App.",
+  "icons": [
+    {
+      "src": "/WebRTC/APP/icon-default.ee534d85.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/WebRTC/APP/icon-default-large.8e027b65.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "https://ianli0623.github.io/WebRTC/",
+  "background_color": "#000",
+  "theme_color": "#536878",
+  "display": "standalone"
+}

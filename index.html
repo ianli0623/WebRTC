@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebRTC</title>
+    <script type="text/javascript" src="js/jsqrscanner.nocache.js"></script>
+    <link rel="manifest" href="/WebRTC/manifest.json">
+</head>
+
+<body>
+    <span><h1>Scan QR Code</h1></span>
+    <hr>
+
+    <!-- 詢問是否允許開啟相機後，會顯示在這個div裡 -->
+    <div class="qrscanner" id="scanner">
+        <div><video class="qrPreviewVideo" autoplay="" tabindex="0" src="" playsinline="true"></video></div>
+    </div>
+
+    <hr>
+
+    <div>
+        <p>Scan Result:</p>
+        <span id="Result"></span>
+    </div>
+</body>
+
+<script type="text/javascript">
+    //參考資料:
+    //該套件的github: https://github.com/jbialobr/JsQRScanner
+    //該套件在解決ios使用問題時的git issue: https://github.com/jbialobr/JsQRScanner/issues/3
+    //Kay在解決ios鏡頭抓取時所寫的code(function getAndOpenCamera): https://gitlab.taipay.com.tw/jasonwai/footdisc/blob/Willy/footdisc/measurement/wwwroot/js/control.js
+
+    
+
+    // 掃描結果
+    function onQRCodeScanned(scannedText) {
+        console.log(scannedText);
+        var scannedTextMemo = document.getElementById("Result");
+        scannedTextMemo.innerHTML += `${scannedText} <br>`;
+
+        try {
+            let url = new URL(scannedText);
+            // window.open(scannedText);
+            window.location.assign(scannedText);
+        } catch (e) {
+            console.warn("Not a url , error message : " + e);
+        }
+    }
+
+    //funtion returning a promise with a video stream
+    //似乎是用於提供camera物件(此為QQ瀏覽器用)
+    function provideVideoQQ() {
+        return navigator.mediaDevices.enumerateDevices()
+            .then(function (devices) {
+                var exCameras = [];
+                devices.forEach(function (device) {
+                    if (device.kind === 'videoinput') {
+                        exCameras.push(device.deviceId)
+                    }
+                });
+
+                return Promise.resolve(exCameras);
+            }).then(function (ids) {
+                if (ids.length === 0) {
+                    return Promise.reject('Could not find a webcam');
+                }
+
+                return navigator.mediaDevices.getUserMedia({
+                    video: {
+                        'optional': [{
+                            'sourceId': ids.length === 1 ? ids[0] : ids[1]//this way QQ browser opens the rear camera
+                        }]
+                    }
+                });
+            });
+    }
+
+    //似乎是用於提供camera物件，其中包含抓取後鏡頭的判斷
+    function provideVideo() {
+        return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+            //似乎是用於找出影像輸入的物件
+            devices = devices.filter(function (devices) {
+                return devices.kind === 'videoinput';
+            });
+
+            //找出名稱中有back的物件，代表後鏡頭
+            let videoinput_id = '';
+            devices.forEach(function (device) {
+                if (device.label.toLowerCase().search("back")) {
+                    videoinput_id = device.deviceId;
+                }
+            });
+
+            //在ios上由於名稱不同，搜尋back會找不到，所以需要另行處理
+            if (videoinput_id != '') {
+                return navigator.mediaDevices.getUserMedia({
+                    video: {
+                        deviceId: {
+                            'exact': videoinput_id
+                        },
+                        facingMode: 'environment',
+                    }
+                });
+            } else {
+                return navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                    }
+                });
+            }
+        });
+
+    }
+
+    //this function will be called when JsQRScanner is ready to use
+    //準備啟用QRCode Reader(JsQRScanner)
+    function JsQRScannerReady() {
+        //create a new scanner passing to it a callback function that will be invoked when
+        //the scanner succesfully scan a QR code
+        // var jbScanner = new JsQRScanner(onQRCodeScanned, provideVideoQQ);
+        var jbScanner = new JsQRScanner(onQRCodeScanned, provideVideo);
+        //reduce the size of analyzed images to increase performance on mobile devices
+        jbScanner.setSnapImageMaxSize(300); // 似乎是用於能掃描的最大圖片尺寸
+        jbScanner.setScanInterval(3000); // 每次掃描的間隔時間，單位是毫秒
+        var scannerParentElement = document.getElementById("scanner"); //綁定影像輸出的原件
+        if (scannerParentElement) {
+            //append the jbScanner to an existing DOM element
+            jbScanner.appendTo(scannerParentElement);
+        }
+    }
+
+    // 注册 service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js', { scope: '/WebRTC/' }).then(function (registration) {
+            // 注册成功
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }).catch(function (err) {
+            // 注册失败 :(
+            console.log('ServiceWorker registration failed: ', err);
+        });
+    }
+
+    //if ('serviceWorker' in navigator) {
+    //    window.addEventListener('load', function () {
+    //        navigator.serviceWorker.register('/sw.js');
+    //    });
+    //}
+</script>
+
+</html>
